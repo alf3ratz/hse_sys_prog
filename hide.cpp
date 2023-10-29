@@ -1,61 +1,36 @@
-
 #include <string>
-#include "hide.h"
 #include <iostream>
-#include <sys/stat.h>
 #include <filesystem>
-#include <map>
-#include <vector>
-#include <fstream>
-#include <unistd.h>
 
 namespace fs = std::filesystem;
 
-class Hide {
-public:
-    Hide(std::string fileName) {
-        this->fileName = fileName;
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        std::cerr << "You should pass filename as argument" << '\n';
+        return 1;
     }
 
-    void hideFile() {
-        createHiddenFolder();
+    const std::string hiddenDirectory = "hidden_folder";
+    const std::string file2Hide = argv[1];
+
+    if (!fs::exists(file2Hide)) {
+        std::cerr << "File does not exist" << '\n';
+        return 1;
     }
 
-private:
-    std::string folderPath = "C:\\Users\\a.petropavlovskiy\\Desktop\\test-folder\\hiden-folder";
-    std::string fileName;
-
-    std::string createHiddenFolder() {
-        //const char* dir = "C:/Users/apples";
-
-        // Structure which would store the metadata
-        struct stat sb;
-        if (stat(folderPath.c_str(), &sb) == 0) {
-            // Folder is already exist
-            std::cout << "The path is valid!" << std::endl;
-        } else {
-            fs::create_directory(folderPath);
-//            fs::permissions(folderPath, fs::perms::group_write);
-//            fs::permissions(folderPath, fs::perms::mask);
-            chmod(folderPath.c_str(), 003);
-            //fs::permissions(folderPath, fs::perms::group_read);
-            std::cout << "Folder has been created" << std::endl;
-            try {
-                auto resultFile = folderPath + "\\" + fileName;
-                auto ptr = fopen(resultFile.c_str(),"w");
-                fprintf(ptr,"%d",123);
-                fclose(ptr);
-//                std::ofstream myfile;
-//                myfile.open(resultFile);
-//                myfile << "Writing this to a file.\n";
-//                myfile.close();
-//                auto qw = myfile.exceptions();
-            } catch (const char *error_message) {
-                std::cout << error_message << std::endl;
-            }
-            std::cout << "File has been created" << std::endl;
+    if (!fs::is_directory(hiddenDirectory)) {
+        if (!fs::create_directory(hiddenDirectory)) {
+            std::cerr << "Error while creating hidden dir" << '\n';
+            return 1;
         }
-
+        fs::permissions(hiddenDirectory, fs::perms::owner_write | fs::perms::owner_exec);
     }
-
-};
+    try {
+        fs::rename(file2Hide, fs::path(hiddenDirectory) / fs::path(file2Hide).filename());
+        std::cout << "File '" << file2Hide << "' hidden" << '\n';
+    } catch (const fs::filesystem_error &e) {
+        std::cerr << "Error while hiding a file: " << e.what() << '\n';
+        return 1;
+    }
+    return 0;
+}
